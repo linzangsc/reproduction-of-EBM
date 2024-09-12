@@ -21,11 +21,12 @@ class EnergyBasedModel(nn.Module):
     
     def sample_by_langevin(self, init_x, max_step=10, epsilon=1e-3):
         x = init_x
+        x.requires_grad = True
         noise = torch.randn_like(x)
         for i in range(max_step):
             energy = self.calculate_energy(x).sum()
-            energy.backward()
-            x = x - epsilon*x.grad + torch.sqrt(2*epsilon)*noise
+            grad = torch.autograd.grad(outputs=energy, inputs=x, create_graph=True)[0]
+            x = x + epsilon*grad + torch.sqrt(torch.tensor(2.*epsilon))*noise
         return x
 
     def calculate_energy(self, x):
@@ -35,6 +36,7 @@ class EnergyBasedModel(nn.Module):
         # shape of x: (bs, c, h, w)
         batch_size, input_channel, height, weight = x.shape
         x = x.reshape(batch_size, -1)
-        energy = self.net(x).squeeze()
+        energy_real = self.calculate_energy(x)
+        energy_model = self.calculate_energy(self.sample_by_langevin(x))
 
-        return torch.exp(energy)
+        return energy_real, energy_model
