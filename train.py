@@ -31,8 +31,10 @@ class Trainer:
                                       device=self.device).to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=config['learning_rate'])
 
-    def loss(self, energy_real, energy_model):
-        return energy_real.mean() - energy_model.mean()
+    def loss(self, energy_real, energy_langevin):
+        cd_loss = (energy_langevin - energy_real).mean()
+        reg_loss = (energy_real**2 + energy_langevin**2).mean()
+        return cd_loss + 0.1*reg_loss
 
     def train(self):
         self.model.train()
@@ -42,26 +44,28 @@ class Trainer:
                 images = images.to(self.device)
                 labels = labels.to(self.device)
                 self.optimizer.zero_grad()
-                energy_real, energy_model = self.model(images)
-                loss = self.loss(energy_real, energy_model)
+                energy_real, energy_langevin = self.model(images)
+                loss = self.loss(energy_real, energy_langevin)
                 loss.backward()
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=0.1)
                 self.optimizer.step()
                 if i % 100 == 0:
-                    print(f'Epoch [{epoch+1}/{self.num_epochs}], Step [{i+1}/{len(self.train_loader)}], loss: {loss.item():.4f}')
+                    # from IPython import embed; embed()
+                    print(f'Epoch [{epoch+1}/{self.num_epochs}], Step [{i+1}/{len(self.train_loader)}], loss: {loss.item():.6f}')
                 self.logger.add_scalar('loss/train', loss.item(), i + epoch * len(self.train_loader))
             self.save_model(self.config['ckpt_path'])
-            with torch.no_grad():
-                z = torch.randn((16, self.image_size*self.image_size)).to(self.device)
-                sample_image = self.model.sample_by_langevin(z, max_step=100)
-                sample_image = sample_image.reshape(16, 1, self.image_size, self.image_size)
-                self.visualize_samples(sample_image, epoch)
+
+            z = torch.randn((16, self.image_size*self.image_size)).to(self.device)
+            sample_image = self.model.sample_by_langevin(z, max_step=100)
+            sample_image = sample_image.reshape(16, 1, self.image_size, self.image_size)
+            self.visualize_samples(sample_image, epoch)
 
     def save_model(self, output_path):
         if not os.path.exists(output_path): os.mkdir(output_path)
         torch.save(self.model.state_dict(), os.path.join(output_path, f"model.pth"))
 
     def visualize_samples(self, sample_images, epoch):
-        sample_images = sample_images.reshape(sample_images.shape[0], self.image_size, self.image_size).to('cpu')
+        sample_images = sample_images.reshape(sample_images.shape[0], self.image_size, self.image_size).detach().to('cpu')
         npy_sampled_theta = np.array(sample_images)
         fig, axs = plt.subplots(4, 4, figsize=(8, 8))
         axs = visualize_float_result(npy_sampled_theta, axs)
