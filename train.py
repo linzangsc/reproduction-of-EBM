@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import matplotlib.pyplot as plt
-from utils import CustomizedDataset, visualize_binary_result, sigmoid, visualize_float_result, visualize_latent_space
+from utils import CustomizedDataset, visualize_float_result, visualize_latent_space, Sampler
 from model import EnergyBasedModel
 from torch.utils.tensorboard import SummaryWriter
 from torch.distributions import Normal
@@ -30,6 +30,8 @@ class Trainer:
         self.model = EnergyBasedModel(input_channel=input_channel, batch_size=self.batch_size,
                                       device=self.device).to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=config['learning_rate'], betas=(0.0, 0.999))
+        self.sampler = Sampler(self.model, img_shape=(1, self.image_size, self.image_size), 
+                               sample_size=self.batch_size, device=self.device)
 
     def loss(self, energy_real, energy_langevin):
         cd_loss = (energy_langevin - energy_real).mean()
@@ -44,7 +46,10 @@ class Trainer:
                 images = images.to(self.device)
                 labels = labels.to(self.device)
                 self.optimizer.zero_grad()
-                energy_real, energy_langevin = self.model(images)
+                # fake_images = self.sampler.sample_new_exmps(steps=60, step_size=10)
+                fake_images = self.sampler.generate_samples(self.model, images.clone(), steps=100, step_size=10)
+                cat_images = torch.cat([images, fake_images], dim=0)
+                energy_real, energy_langevin = self.model(cat_images).chunk(2, dim=0)
                 cd_loss, reg_loss = self.loss(energy_real, energy_langevin)
                 loss = cd_loss + 0.1*reg_loss
                 loss.backward()
@@ -64,7 +69,7 @@ class Trainer:
 
             z = torch.rand((16, 1, self.image_size, self.image_size)).to(self.device)
             z = z * 2 - 1
-            sample_image = self.model.sample_by_langevin(z, max_step=1000)
+            sample_image = self.sampler.generate_samples(self.model, z, steps=256, step_size=10)
             sample_image = sample_image.reshape(16, 1, self.image_size, self.image_size)
             self.visualize_samples(sample_image, epoch)
 
