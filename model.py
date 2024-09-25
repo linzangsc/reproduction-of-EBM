@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from utils import Sampler
 
 class Swish(nn.Module):
     def forward(self, x):
@@ -70,10 +69,10 @@ class EnergyBasedModel(nn.Module):
         return x.detach()
 
     def forward(self, x):
-        # shape of x: (bs, c, h, w)
-        batch_size, input_channel, height, weight = x.shape
-        # x = x.reshape(batch_size, -1)
-        energy_real = self.net(x).squeeze()
-        energy_langevin = self.net(self.sample_by_langevin(x.detach())).squeeze()
+        # # shape of x: (bs, c, h, w)
+        # batch_size, input_channel, height, weight = x.shape
+        # # x = x.reshape(batch_size, -1)
+        # energy_real = self.net(x).squeeze()
+        # energy_langevin = self.net(self.sample_by_langevin(x.detach())).squeeze()
 
-        return energy_real, energy_langevin
+        return self.net(x)
