@@ -4,11 +4,11 @@
 
 本文是对人大高瓴人工智能学院 李崇轩教授主讲的公开课第六节能量函数模型部分内容的梳理（课程链接[了解Sora背后的原理，你需要学习深度生成模型这门课！ 人大高瓴人工智能学院李崇轩讲授深度生成模型之原理与应用（第1讲）_哔哩哔哩_bilibili](https://link.zhihu.com/?target=https%3A//www.bilibili.com/video/BV1yq421A7ig/%3Fspm_id_from%3D333.337.search-card.all.click%26vd_source%3D196c5d43f645df8f93e712dc5e152b18)）。如有不准确的地方还请大家指出。
 
-作为一种基于极大似然估计(MLE)的生成模型，能量函数模型(Energy based model, EBM)对似然的建模可以说是最灵活的。VAE、自回归、流模型都是基于一定的规则和假设对数据建模概率分布，EBM则直接以$$x$$为输入去求分布$$p_{\theta}(x)$$，同时对负责建模的神经网络模型没有约束条件。从这个角度来说，EBM的motivation和GAN是有异曲同工之妙的，都是为了卸下模型表达能力上的枷锁（假设和要求），但它和GAN又不一样，GAN直接生成sample，EBM则仍然是输出分布。
+回顾一下此前介绍的几类生成模型的缺陷：自回归模型、VAE和流模型都是从建模数据似然的角度出发进行学习的，其中自回归模型假设序列的当前值是其过去值的函数；VAE不直接最大化似然而是通过VI去最大化似然的下界ELBO；流模型虽然对似然的建模和优化没有近似，但对负责建模的神经网络有着很强的约束。另一方面，GAN则是绕开了建模数据似然这个问题，直接建模sample，属于另一个赛道。本次要梳理的能量函数模型(Energy based model, EBM)也对数据的似然进行建模，但它所不同的是没有对似然的建模引入任何假设，也没有对负责建模的神经网络提出任何约束，因此是非常灵活的生成模型。
 
 ## 能量函数模型EBM
 
-和VAE、GAN不同的是，EBM通常只有一个神经网络模型。一方面，我们有一个表达能力很强的神经网络模型，它接收样本$$x$$作为输入，可以用来拟合非常复杂的非线性函数$$f_{\theta}(x)$$；另一方面，为了能够通过MLE驱动模型学习和更新，我们需要拟合似然$$p_{\theta}(x)$$。EBM计算似然的方法很直接，且没有对概率建模做任何假设，也没有对模型做任何约束：将$$f_{\theta}(x)$$转换成合法的概率密度。合法的概率密度需要满足两条性质：非负且积分为1。因此EBM对神经网络的输出$$f_{\theta}(x)$$进行如下转换：
+和VAE、GAN不同的是，EBM通常只有一个神经网络模型，它接收样本$$x$$作为输入，可以用来拟合非常复杂的非线性函数$$f_{\theta}(x)$$；另一方面，为了能够通过MLE驱动模型学习和更新，我们需要拟合似然$$p_{\theta}(x)$$。EBM计算似然的方法很直接，且没有对概率建模做任何假设，也没有对模型做任何约束：将$$f_{\theta}(x)$$转换成合法的概率密度。合法的概率密度需要满足两条性质：非负且积分为1。因此EBM对神经网络的输出$$f_{\theta}(x)$$进行如下转换：
 
 1. 通过激活函数$$g_{\theta}(x)$$将$$f_{\theta}(x)$$转换为非负，例如$$g_{\theta}(x)=f_{\theta}(x)^2$$；
 2. 定义$$p_{\theta}(x) = \frac{g_{\theta}(x)}{\int g_{\theta}(x)dx}$$，则$$p_{\theta}(x)$$满足积分为1的性质，其中$$Z_{}(\theta) = \int g_{\theta}(x)dx$$是一个常数项，用于归一化；
@@ -186,8 +186,10 @@ $$\begin{align}
 &= \frac{1}{n} \sum_{i=1}^n [\frac{1}{2}\Vert \nabla_x f_{\theta}(x_i)\Vert_2 + tr(\nabla_x^{2}f_{\theta}(x_i))] \tag{31} \\
 \end{align}$$
 
-式（30）到式（31）是使用了蒙特卡罗估计。因此式（31）是score matching的优化目标，通过最小化式（31）来驱动EBM更新，然后在训练完成以后再通过郎之万动力学采样，是EBM的一种likelihood-free的学习方法。和基于CD的学习方法相比，score matching不需要在每个训练轮次都多次采样，但不足之处是$$f_{\theta}(x_i)$$的二阶导也就是hessian矩阵的计算也是复杂度比较高的。
+式（30）到式（31）是使用了蒙特卡罗估计。因此式（31）是score matching的优化目标，通过最小化式（31）来驱动EBM更新，然后在训练完成以后再通过郎之万动力学采样，是EBM的一种likelihood-free的学习方法。和基于CD的学习方法相比，score matching不需要在每个训练轮次都多次采样，但不足之处是$$f_{\theta}(x_i)$$的二阶导也就是hessian矩阵的计算也是复杂度比较高的，从这个角度来说score matching是很难scale up的。
 
 ## 总结
 
-diffusion可以用EBM进行解释，并且在此基础上做POE（参考ECCV2022 Compositional Visual Generation with Composable Diffusion Models https://arxiv.org/pdf/2206.01714）
+能量函数模型对似然的建模可以说是最灵活的。VAE、自回归、流模型都是基于一定的规则和假设对数据建模概率分布，EBM则直接以$$x$$为输入去求分布$$p_{\theta}(x)$$，同时对负责建模的神经网络模型没有约束条件。从这个角度来说，EBM的motivation和GAN是有异曲同工之妙的，都是为了卸下模型表达能力上的枷锁（假设和要求），但它和GAN又不一样，GAN直接生成sample，EBM则仍然是输出分布。
+
+正如前述所说，EBM存在的问题主要来自其intractable的似然带来的采样和优化问题。基于MLE学习EBM，会用到CD和implicit sampling，除此之外还有不用MLE的学习方法即score matching，而这和diffusion model则有着很深的联系。事实上，diffusion model可以用EBM进行解释，并且在此基础上做POE（参考ECCV2022 Compositional Visual Generation with Composable Diffusion Models https://arxiv.org/pdf/2206.01714）。
