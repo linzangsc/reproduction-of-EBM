@@ -1,4 +1,4 @@
-## reproduction of energy-based model with langevin divergence using pytorch
+## Reproduction of Energy-based Model with Contrastive Divergence and Langevin Dynamics by Pytorch
 
 the code of sample buffer refers to https://github.com/phlippe/uvadlc_notebooks/blob/master/docs/tutorial_notebooks/tutorial8/Deep_Energy_Models.ipynb
 
