@@ -1,3 +1,7 @@
+## reproduction of energy-based model with langevin divergence using pytorch
+
+the code of sample buffer refers to https://github.com/phlippe/uvadlc_notebooks/blob/master/docs/tutorial_notebooks/tutorial8/Deep_Energy_Models.ipynb
+
 usage: python train.py
 
 some sampling results after training 100 epochs:
