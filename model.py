@@ -40,17 +40,6 @@ class EnergyBasedModel(nn.Module):
         self.device = device
         self.batch_size = batch_size
         self.input_channel = input_channel
-        # self.net = nn.Sequential(
-        #     nn.Linear(input_channel, 256),
-        #     Swish(),
-        #     nn.Linear(256, 128),
-        #     Swish(),
-        #     nn.Linear(128, 64),
-        #     Swish(),
-        #     nn.Linear(64, 32),
-        #     Swish(),
-        #     nn.Linear(32, 1),
-        # )
         self.net = CNNModel()
     
     def sample_by_langevin(self, init_x, max_step=100, epsilon=10):
@@ -63,16 +52,9 @@ class EnergyBasedModel(nn.Module):
             energy = self.net(x).sum()
             grad = torch.autograd.grad(outputs=energy, inputs=x)[0]
             grad.clamp_(-0.03, 0.03)
-            # if grad.max() > 10: print(f"grad: {grad.max()}")
             x = x + epsilon*grad + torch.sqrt(torch.tensor(2.*epsilon))*noise
             x = x.clip(-1., 1.)
         return x.detach()
 
     def forward(self, x):
-        # # shape of x: (bs, c, h, w)
-        # batch_size, input_channel, height, weight = x.shape
-        # # x = x.reshape(batch_size, -1)
-        # energy_real = self.net(x).squeeze()
-        # energy_langevin = self.net(self.sample_by_langevin(x.detach())).squeeze()
-
         return self.net(x)

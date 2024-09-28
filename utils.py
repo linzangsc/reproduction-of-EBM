@@ -12,9 +12,9 @@ class CustomizedDataset:
             transforms.Normalize((0.5,), (0.5,))
         ])
 
-        self.train_dataset = datasets.MNIST(root='../dataset', train=True, 
+        self.train_dataset = datasets.MNIST(root='../data', train=True, 
                                             download=True, transform=self.transform)
-        self.test_dataset = datasets.MNIST(root='../dataset', train=False, 
+        self.test_dataset = datasets.MNIST(root='../data', train=False, 
                                            download=True, transform=self.transform)
 
 def visualize_float_result(image, axs):
@@ -43,6 +43,9 @@ def visualize_latent_space(latents, labels, ax):
     return ax
 
 class Sampler:
+    '''
+    copy from https://github.com/phlippe/uvadlc_notebooks/blob/master/docs/tutorial_notebooks/tutorial8/Deep_Energy_Models.ipynb
+    '''
 
     def __init__(self, model, img_shape, sample_size, device, max_len=8192):
         """
